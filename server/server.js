@@ -5,14 +5,9 @@ const mongoose = require('mongoose');
 const cors = require('cors');
 
 // 1. IMPORT CẤU HÌNH CLOUDINARY
-const uploadCloudinary = require('./config/cloudinary');
+const uploadCloudinary = require('./config/cloudinary'); 
 const Report = require('./models/Report');
 const cloudinary = require('cloudinary').v2;
-
-// TẠM ĐÓNG DÒNG NÀY LẠI VÌ BẠN ĐÃ ĐỊNH NGHĨA ROUTE TRỰC TIẾP BÊN DƯỚI
-// Nếu dùng reportRoutes thì nó sẽ chặn mất các app.post, app.get ở dưới
-// const reportRoutes = require('./routes/reportRoutes'); 
-
 
 console.log("Kiểm tra API Key:", process.env.CLOUDINARY_API_KEY);
 
@@ -20,22 +15,15 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-app.use(express.urlencoded({ extended: true })); // Thêm dòng này để hỗ trợ đọc form
+app.use(express.urlencoded({ extended: true }));
 
-/* =========================
-   STATIC FOLDER
-========================= */
+//STATIC FOLDER
 app.use('/uploads', express.static('uploads'));
 
 const authRoutes = require('./routes/authRoutes.router');
 app.use('/api/auth', authRoutes);
 
-// BỎ DÒNG NÀY ĐỂ TRÁNH XUNG ĐỘT ROUTE:
-// app.use('/api/reports', reportRoutes); 
-
-/* =========================
-   CONNECT MONGODB
-========================= */
+//CONNECT MONGODB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => {
     console.log("✅ Đã kết nối MongoDB thành công!");
@@ -44,10 +32,8 @@ mongoose.connect(process.env.MONGO_URI)
     console.log("❌ Lỗi kết nối:", err);
   });
 
-/* =========================
-   POST REPORT
-   NÔNG DÂN GỬI BÁO CÁO
-========================= */
+//POST REPORT
+//NÔNG DÂN GỬI BÁO CÁO
 app.post(
   '/api/reports',
   uploadCloudinary.array('images', 10),
@@ -55,23 +41,24 @@ app.post(
     try {
       // req.files do Cloudinary trả về
       const images = req.files
-        ? req.files.map(file => ({
-          imageUrl: file.path,
-          diseaseLabel: "",
-          status: "pending"
-        }))
-        : [];
+      ? req.files.map(file => ({
+      imageUrl: file.path,
+      publicId: file.filename,
+      diseaseLabel: "",
+      status: "pending"
+      }))
+      : [];
 
       const newReport = new Report({
-        farmerId: req.body.farmerId,
-        plotId: req.body.plotId,
-        plotStatus: req.body.plotStatus,
-        cropType: req.body.cropType,
-        spreadRate: req.body.spreadRate,
-        severity: req.body.severity,
-        note: req.body.note,
-        images
-      });
+      farmerId: req.body.farmerId,
+      plotId: req.body.plotId,
+      plotStatus: req.body.plotStatus,
+      cropType: req.body.cropType,
+      spreadRate: req.body.spreadRate,
+      severity: req.body.severity,
+      note: req.body.note,
+      images
+    });
 
       const savedReport = await newReport.save();
       console.log("📩 Đã nhận báo cáo mới với ảnh Cloudinary");
@@ -84,10 +71,8 @@ app.post(
   }
 );
 
-/* =========================
-   GET ALL REPORTS
-   CÁN BỘ KỸ THUẬT
-========================= */
+//GET ALL REPORTS
+//CÁN BỘ KỸ THUẬT
 app.get('/api/reports', async (req, res) => {
   try {
     const keyword = req.query.keyword || "";
@@ -104,9 +89,7 @@ app.get('/api/reports', async (req, res) => {
   }
 });
 
-/* =========================
-   UPDATE REPORT
-========================= */
+//UPDATE REPORT
 app.put('/api/reports/:id', async (req, res) => {
   try {
     const updatedReport = await Report.findByIdAndUpdate(
@@ -119,9 +102,8 @@ app.put('/api/reports/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-/* ========================================================
-   ROUTE BỔ SUNG: XÁC NHẬN + GÁN NHÃN THEO TỪNG ẢNH
-======================================================== */
+
+//ROUTE BỔ SUNG: XÁC NHẬN + GÁN NHÃN THEO TỪNG ẢNH
 app.put('/api/reports/:reportId/images/:imageIndex/confirm', async (req, res) => {
   try {
     const { diseaseLabel, technicianNote } = req.body;
@@ -150,9 +132,7 @@ app.put('/api/reports/:reportId/images/:imageIndex/confirm', async (req, res) =>
   }
 });
 
-/* ========================================================
-   ROUTE BỔ SUNG: ĐÁNH DẤU SAI BỆNH THEO TỪNG ẢNH
-======================================================== */
+//ROUTE BỔ SUNG: ĐÁNH DẤU SAI BỆNH THEO TỪNG ẢNH
 app.put('/api/reports/:reportId/images/:imageIndex/wrong', async (req, res) => {
   try {
     const imageIndex = parseInt(req.params.imageIndex);
@@ -177,9 +157,7 @@ app.put('/api/reports/:reportId/images/:imageIndex/wrong', async (req, res) => {
   }
 });
 
-/* ========================================================
-   ROUTE BỔ SUNG: BIỂU ĐỒ 7 NGÀY - TÍNH % BỆNH TRUNG BÌNH
-======================================================== */
+//ROUTE BỔ SUNG: BIỂU ĐỒ 7 NGÀY - TÍNH % BỆNH TRUNG BÌNH
 app.get('/api/reports/weekly-trend', async (req, res) => {
   try {
     const reports = await Report.find();
@@ -216,7 +194,7 @@ app.get('/api/reports/weekly-trend', async (req, res) => {
       }
 
       trend.push({
-        day: daysOfWeek[day.getDay()],
+        day: daysOfWeek[day.getDay()], 
         count: averageSpreadRate // Số % bệnh trung bình thực tế (0 - 100)
       });
     }
@@ -227,9 +205,7 @@ app.get('/api/reports/weekly-trend', async (req, res) => {
   }
 });
 
-/* =========================
-   DELETE REPORT (Xóa luôn ảnh trên Cloudinary)
-========================= */
+//DELETE REPORT (Xóa luôn ảnh trên Cloudinary)
 app.delete('/api/reports/:id', async (req, res) => {
   try {
     // 1. Tìm báo cáo trong DB trước khi xóa để lấy danh sách link ảnh
@@ -254,7 +230,7 @@ app.delete('/api/reports/:id', async (req, res) => {
 
     // 3. Sau khi dọn dẹp ảnh xong thì xóa báo cáo khỏi MongoDB
     await Report.findByIdAndDelete(req.params.id);
-
+    
     res.json({ message: "Đã xóa thành công báo cáo và ảnh đính kèm!" });
   } catch (err) {
     console.error("Lỗi khi xóa báo cáo:", err);
@@ -262,9 +238,7 @@ app.delete('/api/reports/:id', async (req, res) => {
   }
 });
 
-/* ========================================================
-   ROUTE BỔ SUNG: LẤY KHO ẢNH THAM KHẢO (ĐÃ GÁN NHÃN TỪ CÁN BỘ)
-======================================================== */
+//ROUTE BỔ SUNG: LẤY KHO ẢNH THAM KHẢO (ĐÃ GÁN NHÃN TỪ CÁN BỘ)
 app.get('/api/reference-images', async (req, res) => {
   try {
     const { cropType } = req.query;
@@ -272,12 +246,12 @@ app.get('/api/reference-images', async (req, res) => {
     // 1. Lọc các báo cáo theo loại cây (nếu có truyền lên)
     const query = {};
     if (cropType) {
-      query.cropType = { $regex: new RegExp(`^${cropType}$`, "i") }; // Tìm chính xác loại cây, không phân biệt hoa thường
+      query.cropType = { $regex: new RegExp(`^${cropType}$`, "i") };
     }
 
     const reports = await Report.find(query).sort({ createdAt: -1 });
 
-    // 2. Dùng Map để lọc ra các bệnh độc nhất (Tránh việc 1 bệnh hiển thị 100 cái ảnh trùng nhau làm lag Front-end)
+    // 2. Dùng Map để lọc ra các bệnh độc nhất
     const uniqueDiseases = new Map();
 
     reports.forEach(report => {
@@ -285,13 +259,13 @@ app.get('/api/reference-images', async (req, res) => {
         report.images.forEach(img => {
           // Chỉ lấy những ảnh đã được cán bộ kỹ thuật xác nhận và có tên bệnh
           if (img.status === "confirmed" && img.diseaseLabel) {
-
+            
             // Nếu bệnh này chưa có trong danh sách hiển thị, thì thêm vào
             if (!uniqueDiseases.has(img.diseaseLabel)) {
               uniqueDiseases.set(img.diseaseLabel, {
                 name: img.diseaseLabel,
                 desc: report.note || "Ảnh bệnh đã được cán bộ kỹ thuật xác nhận từ thực địa.",
-                imgUrl: img.imageUrl // Đây chính là link ảnh từ Cloudinary
+                imgUrl: img.imageUrl 
               });
             }
           }
@@ -301,7 +275,6 @@ app.get('/api/reference-images', async (req, res) => {
 
     // 3. Chuyển đổi Map thành mảng để gửi về Frontend
     const referenceImages = Array.from(uniqueDiseases.values());
-
     res.json(referenceImages);
   } catch (err) {
     console.error("Lỗi khi tải kho ảnh tham khảo:", err);
@@ -309,9 +282,7 @@ app.get('/api/reference-images', async (req, res) => {
   }
 });
 
-/* ========================================================
-   ROUTE BỔ SUNG: XÓA 1 BỨC ẢNH LẺ TRONG KHO ẢNH (DÙNG PUBLIC_ID)
-======================================================== */
+//ROUTE BỔ SUNG: XÓA 1 BỨC ẢNH LẺ TRONG KHO ẢNH (DÙNG PUBLIC_ID)
 app.delete('/api/reports/:reportId/image', async (req, res) => {
   try {
     const { reportId } = req.params;
@@ -361,9 +332,7 @@ app.delete('/api/reports/:reportId/image', async (req, res) => {
   }
 });
 
-/* ========================================================
-   ROUTE: LẤY TỐI ĐA 10 ẢNH ĐÃ XÁC NHẬN CỦA 1 LOẠI BỆNH CỤ THỂ
-======================================================== */
+//ROUTE: LẤY TỐI ĐA 10 ẢNH ĐÃ XÁC NHẬN CỦA 1 LOẠI BỆNH CỤ THỂ
 app.get('/api/reports/disease-images', async (req, res) => {
   try {
     const { label } = req.query;
@@ -372,9 +341,9 @@ app.get('/api/reports/disease-images', async (req, res) => {
     }
 
     // Tìm tất cả báo cáo có chứa ảnh đã xác nhận thuộc bệnh này
-    const reports = await Report.find({
-      "images.diseaseLabel": label,
-      "images.status": "confirmed"
+    const reports = await Report.find({ 
+      "images.diseaseLabel": label, 
+      "images.status": "confirmed" 
     }).sort({ createdAt: -1 });
 
     let matchedImages = [];
@@ -398,25 +367,19 @@ app.get('/api/reports/disease-images', async (req, res) => {
   }
 });
 
-/* =========================
-   TEST API
-========================= */
+//TEST API
 app.get('/', (req, res) => {
   res.json({ message: 'Server Running' });
 });
 
-/* =========================
-   GLOBAL ERROR HANDLER
-   (Bắt mọi lỗi từ multer/cloudinary để không bị trả về HTML rác)
-========================= */
+//GLOBAL ERROR HANDLER
+//(Bắt mọi lỗi từ multer/cloudinary để không bị trả về HTML rác)
 app.use((err, req, res, next) => {
   console.error("Lỗi Server Toàn Cục:", err.message);
   res.status(500).json({ error: err.message || "Lỗi nội bộ Server" });
 });
 
-/* =========================
-   START SERVER
-========================= */
+//START SERVER
 const PORT = process.env.PORT || 5000;
 app.listen(PORT, () => {
   console.log(`🚀 Server đang chạy tại port ${PORT}`);

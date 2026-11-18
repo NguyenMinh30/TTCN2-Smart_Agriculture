@@ -1,0 +1,6 @@
+# Bỏ qua thư mục thư viện của cả FE và BE
+node_modules/
+
+# Bỏ qua tất cả các file biến môi trường (.env, .env.local, .env.production...)
+.env
+.env.*
